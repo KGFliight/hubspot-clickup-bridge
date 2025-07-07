@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: HubSpot to ClickUp Bridge
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+
+Resources:
+  HubspotWebhookFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: hello-world/
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          SECRET_ID: hubspot-clickup-bridge-secrets  # Name of your secret in Secrets Manager
+          CLICKUP_FOLDER_ID_A: 90162164331
+          CLICKUP_TEMPLATE_ID_A: f8a708ca87090c1b2d
+          CLICKUP_FOLDER_ID_B: your_folder_id_for_list_b
+          CLICKUP_TEMPLATE_ID_B: your_template_id_for_list_b
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: "*"
+      Events:
+        HubspotWebhook:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /hubspot/webhook
+            Method: post
+        ClickupOAuthCallback:
+          Type: Api
+          Properties:
+            Path: /clickup/oauth/callback
+            Method: get
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  HubspotWebhookApi:
+    Description: "API Gateway endpoint URL for Prod stage for Hubspot Webhook function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hubspot/webhook/"
+  HubspotWebhookFunction:
+    Description: "Hubspot Webhook Lambda Function ARN"
+    Value: !GetAtt HubspotWebhookFunction.Arn
+  HubspotWebhookFunctionIamRole:
+    Description: "Implicit IAM Role created for Hubspot Webhook function"
+    Value: !GetAtt HubspotWebhookFunctionRole.Arn
+  ClickupOAuthCallbackApi:
+    Description: "API Gateway endpoint URL for Prod stage for ClickUp OAuth callback"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/clickup/oauth/callback"
